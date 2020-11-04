@@ -1,0 +1,17 @@
+.DS_Store
+.idea
+*.log
+tmp/
+
+
+bin/
+build/
+cores/
+roms/
+
+src/src
+src/Makefile
+src/CMakeLists.txt
+src/cmake_install.cmake
+src/CMakeFiles
+src/CMakeCache.txt

@@ -44,12 +44,6 @@ shared_ptr<PeerConnection> createPeerConnection(const Configuration &config,
 void confirmOnStdout(bool echoed, string id, string type, size_t length);
 string randomId(size_t length);
 
-/*
-** TODO BLOCK
-** How to avoid copy
-** Data being buffered?
-*/
-
 int main(int argc, char **argv) {
 	Cmdline *params = nullptr;
 	try {
@@ -63,7 +57,7 @@ int main(int argc, char **argv) {
 	if (argc < 4)
 		die("usage: %s <core> <game> <clientId>", argv[0]);
 
-	rtc::InitLogger(LogLevel::Verbose);
+	rtc::InitLogger(LogLevel::Debug);
 
 	Configuration config;
 	string stunServer = "";
@@ -165,59 +159,10 @@ int main(int argc, char **argv) {
 	auto dc = pc->createDataChannel(label);
 
 	weak_dc = make_weak_ptr(dc);
-	dc->onOpen([id, localId, params]() {
+	bool channelIsOpen = false;
+	dc->onOpen([id, &channelIsOpen]() {
 		cout << "DataChannel from " << id << " open" << endl;
-
-		// Starting up nanoarch
-		if (!glfwInit())
-			die("Failed to initialize glfw");
-
-
-		core_load(params->coreName());
-		core_load_game(params->gameName());
-
-		int video_buffer_size = 3*nwidth*nheight;
-
-		int chunk_size = 1024;
-		int nchunks = int(video_buffer_size/chunk_size)+1;
-		binary video_chunk(chunk_size);
-		vector<binary> video_data; // The video data to be transmitted.
-		for (int i=0; i < nchunks; i++) video_data.push_back(video_chunk);
-
-		GLubyte *data = (GLubyte*)malloc((video_buffer_size)*sizeof(int));
-
-		while (!glfwWindowShouldClose(g_win)) {
-			glfwPollEvents();
-
-			g_retro.retro_run();
-
-			glClear(GL_COLOR_BUFFER_BIT);
-
-			video_render();
-
-			// glReadPixels(0, 0, nwidth, nheight, GL_RGB, GL_UNSIGNED_BYTE, data);
-
-			// // Load video into binary
-			// for (int i = 0; i< nchunks; i++)
-			// {
-			// 	for (int j=0; j < chunk_size; j++)
-			// 	{
-			// 		video_data[i][j] = (byte)data[i*chunk_size + j];
-			// 	}
-			// 	if (auto dc = weak_dc.lock()) dc->send(video_data[i]);
-			// }
-
-			if (auto dc = weak_dc.lock()) dc->send("hello");
-
-			glfwSwapBuffers(g_win);
-		}
-
-		free(data);
-		core_unload();
-		audio_deinit();
-		video_deinit();
-
-		glfwTerminate();
+		channelIsOpen = true;
 	});
 
 	dc->onClosed([id]() { cout << "DataChannel from " << id << " closed" << endl; });
@@ -240,7 +185,68 @@ int main(int argc, char **argv) {
 
 	dataChannelMap.emplace(id, dc);
 
-	while(1) {};
+	while(!channelIsOpen) {}; //busy wait for channel to open.
+
+
+	// Starting up nanoarch
+	if (!glfwInit())
+		die("Failed to initialize glfw");
+
+	core_load(params->coreName());
+	core_load_game(params->gameName());
+
+	struct retro_system_av_info *info = (retro_system_av_info*)malloc(sizeof(retro_system_av_info));
+	g_retro.retro_get_system_av_info(info);
+	cout << "THE INFORMATION I NEED: \n1) FPS : " << info->timing.fps << "\n2) SAMPLE RATE : " << info->timing.sample_rate << endl;
+	free(info);
+
+	int video_buffer_size = 3*nwidth*nheight;
+
+	int chunk_size = 32768;
+	int nchunks = int(video_buffer_size/chunk_size)+1;
+
+	binary video_chunk(chunk_size);
+	vector<binary> video_data; // The video data to be transmitted.
+	for (int i=0; i < nchunks; i++) video_data.push_back(video_chunk);
+
+	GLubyte *data = (GLubyte*)malloc((video_buffer_size)*sizeof(int));
+
+	int i = 4;
+	while (!glfwWindowShouldClose(g_win)) {
+		glfwPollEvents();
+
+		g_retro.retro_run();
+
+		glClear(GL_COLOR_BUFFER_BIT);
+
+		video_render();
+
+		// glReadPixels(0, 0, nwidth, nheight, GL_RGB, GL_UNSIGNED_BYTE, data);
+		// Load video into binary
+		// for (int i = 0; i< nchunks; i++)
+		// {
+		// 	for (int j=0; j < chunk_size; j++)
+		// 	{
+		// 		video_data[i][j] = (byte)data[i*chunk_size + j];
+		// 	}
+		// 	if (auto dc = weak_dc.lock()) dc->send(video_data[i]);
+		// 	cout << dc->bufferedAmount() << endl;
+		// }
+		// const char* msg = "Hello World";
+		// rtcSendMessage(1, msg,-1);
+
+		//if (i==0)
+		glfwSwapBuffers(g_win);
+		// i = (i+1)%4;
+	}
+
+	free(data);
+	core_unload();
+	audio_deinit();
+	video_deinit();
+
+	glfwTerminate();
+
 
 	cout << "Cleaning up..." << endl;
 

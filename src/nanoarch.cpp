@@ -391,8 +391,13 @@ void core_audio_sample(int16_t left, int16_t right) {
 size_t core_audio_sample_batch(const int16_t *data, size_t frames) {
 	if (auto dc = weak_dc.lock()) {
 		// Load audio into binary
-		// for (int i = 0; i< 1024; i++) audio_data[i] = (std::byte)((data[i]+32768) >> 8);
-		// dc->send(audio_data);
+		int j=0;
+		for (int i = 0; i< 1024; i+=2)
+		{
+			audio_data[j++] = (std::byte)((data[i] >> 0)); //little endian
+			audio_data[j++] = (std::byte)((data[i] >> 8));
+		}
+		dc->send(audio_data);
 	}
 
 	return audio_write(data, frames);

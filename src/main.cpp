@@ -195,23 +195,27 @@ int main(int argc, char **argv) {
 	core_load(params->coreName());
 	core_load_game(params->gameName());
 
-	struct retro_system_av_info *info = (retro_system_av_info*)malloc(sizeof(retro_system_av_info));
-	g_retro.retro_get_system_av_info(info);
-	cout << "THE INFORMATION I NEED: \n1) FPS : " << info->timing.fps << "\n2) SAMPLE RATE : " << info->timing.sample_rate << endl;
-	free(info);
+	// struct retro_system_av_info *info = (retro_system_av_info*)malloc(sizeof(retro_system_av_info));
+	// g_retro.retro_get_system_av_info(info);
+	// cout << "THE INFORMATION I NEED: \n1) FPS : " << info->timing.fps << "\n2) SAMPLE RATE : " << info->timing.sample_rate << endl;
+	// free(info);
 
-	int video_buffer_size = 3*nwidth*nheight;
+	unsigned long int video_buffer_size = 3*nwidth*nheight;
+	unsigned long int compressed_size = video_buffer_size;
 
-	int chunk_size = 32768;
-	int nchunks = int(video_buffer_size/chunk_size)+1;
+	if (auto dc = weak_dc.lock()) //transmit resolution
+	{
+		json j; j["width"] = nwidth; j["height"] = nheight;
+		dc->send(j.dump());
+	}
 
-	binary video_chunk(chunk_size);
-	vector<binary> video_data; // The video data to be transmitted.
-	for (int i=0; i < nchunks; i++) video_data.push_back(video_chunk);
+	binary video_data(video_buffer_size);
 
-	GLubyte *data = (GLubyte*)malloc((video_buffer_size)*sizeof(int));
+	GLubyte *data = (GLubyte*)malloc((video_buffer_size)*sizeof(GLubyte));
+	GLubyte *compressed_data = (GLubyte*)malloc((video_buffer_size)*sizeof(GLubyte));
 
-	int i = 4;
+	int i = 0;
+	int r;
 	while (!glfwWindowShouldClose(g_win)) {
 		glfwPollEvents();
 
@@ -221,26 +225,28 @@ int main(int argc, char **argv) {
 
 		video_render();
 
-		// glReadPixels(0, 0, nwidth, nheight, GL_RGB, GL_UNSIGNED_BYTE, data);
-		// Load video into binary
-		// for (int i = 0; i< nchunks; i++)
-		// {
-		// 	for (int j=0; j < chunk_size; j++)
-		// 	{
-		// 		video_data[i][j] = (byte)data[i*chunk_size + j];
-		// 	}
-		// 	if (auto dc = weak_dc.lock()) dc->send(video_data[i]);
-		// 	cout << dc->bufferedAmount() << endl;
-		// }
-		// const char* msg = "Hello World";
-		// rtcSendMessage(1, msg,-1);
+		if (i%10 == 0) {
+			glReadPixels(0, 0, nwidth, nheight, GL_RGB, GL_UNSIGNED_BYTE, data);
+			r = compress2(compressed_data, &compressed_size, data, video_buffer_size, 1);
 
-		//if (i==0)
+			if (r == Z_BUF_ERROR) cout << "buffer not big enough\n";
+			if (compressed_size < video_data.size()) video_data.resize(compressed_size);
+
+			// Load video into binary
+			for (int i = 0; i< compressed_size; i++)
+				video_data[i] = (byte)compressed_data[i];
+			if (auto dc = weak_dc.lock()) dc->send(video_data);
+			// rtcSendMessage(1, msg,-1);
+			i=0;
+			compressed_size = video_buffer_size;
+		}
+		i++;
+
 		glfwSwapBuffers(g_win);
-		// i = (i+1)%4;
 	}
 
 	free(data);
+	free(compressed_data);
 	core_unload();
 	audio_deinit();
 	video_deinit();

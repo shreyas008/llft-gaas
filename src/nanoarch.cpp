@@ -15,7 +15,7 @@ int nwidth;
 GLFWwindow *g_win = NULL;
 struct GameRetro g_retro;
 
-rtc::binary audio_data(1024);
+rtc::binary audio_data(1026);
 
 snd_pcm_t *g_pcm = NULL;
 float g_scale = 3;
@@ -391,7 +391,9 @@ void core_audio_sample(int16_t left, int16_t right) {
 size_t core_audio_sample_batch(const int16_t *data, size_t frames) {
 	if (auto dc = weak_dc.lock()) {
 		// Load audio into binary
-		int j=0;
+		int j=2; //first two indices are magic number
+		audio_data[0] = (std::byte)'A';
+		audio_data[1] = (std::byte)'U'; //magic numbers acting as signature for audio
 		for (int i = 0; i< 1024; i+=2)
 		{
 			audio_data[j++] = (std::byte)((data[i] >> 0)); //little endian

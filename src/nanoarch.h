@@ -1,8 +1,10 @@
 #ifndef __NANOARCH_H_
 #define __NANOARCH_H_
 
-#include "rtc/rtc.hpp"
+#include <rtc/rtc.hpp>
+#include <rtc/rtc.h>
 #include <nlohmann/json.hpp>
+#include <zlib.h>
 
 #include <algorithm>
 #include <iostream>

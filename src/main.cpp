@@ -202,6 +202,7 @@ int main(int argc, char **argv) {
 
 	unsigned long int video_buffer_size = 3*nwidth*nheight;
 	unsigned long int compressed_size = video_buffer_size;
+	unsigned long int uncompressed_size = video_buffer_size;
 
 	if (auto dc = weak_dc.lock()) //transmit resolution
 	{
@@ -213,6 +214,7 @@ int main(int argc, char **argv) {
 
 	GLubyte *data = (GLubyte*)malloc((video_buffer_size)*sizeof(GLubyte));
 	GLubyte *compressed_data = (GLubyte*)malloc((video_buffer_size)*sizeof(GLubyte));
+	GLubyte *uncompressed_data = (GLubyte*)malloc((video_buffer_size)*sizeof(GLubyte));
 
 	int i = 0;
 	int r;
@@ -226,11 +228,11 @@ int main(int argc, char **argv) {
 		video_render();
 
 		if (i%10 == 0) {
-			glReadPixels(0, 0, nwidth, nheight, GL_RGB, GL_UNSIGNED_BYTE, data);
-			r = compress2(compressed_data, &compressed_size, data, video_buffer_size, 1);
+			glReadPixels(0, 0, nwidth, nheight, GL_BGR, GL_UNSIGNED_BYTE, data);
 
+			r = compress2(compressed_data, &compressed_size, data, video_buffer_size, 1);
 			if (r == Z_BUF_ERROR) cout << "buffer not big enough\n";
-			if (compressed_size < video_data.size()) video_data.resize(compressed_size);
+			video_data.resize(compressed_size);
 
 			// Load video into binary
 			for (int i = 0; i< compressed_size; i++)

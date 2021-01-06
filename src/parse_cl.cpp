@@ -59,9 +59,9 @@ Cmdline::Cmdline (int argc, char *argv[]) // ISO C++17 not allowed: throw (std::
   /* default values */
   _e = false;
   _n = false;
-  _s = "52.2.224.208";
-  _t = 3478;
-  _w = "23.22.139.197";
+  _s = "stun.l.google.com";
+  _t = 19304;
+  _w = "34.205.11.45";
   _x = 8086;
   _h = false;
   _v = false;

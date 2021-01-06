@@ -60,7 +60,7 @@ Cmdline::Cmdline (int argc, char *argv[]) // ISO C++17 not allowed: throw (std::
   _e = false;
   _n = false;
   _s = "stun.l.google.com";
-  _t = 19304;
+  _t = 19302;
   _w = "34.205.11.45";
   _x = 8086;
   _h = false;

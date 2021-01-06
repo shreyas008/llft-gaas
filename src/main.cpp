@@ -37,6 +37,7 @@ weak_ptr<DataChannel> weak_dc;
 
 string localId;
 bool echoDataChannelMessages = false;
+xdo_t* xwin = xdo_new(NULL); // handle to window
 
 shared_ptr<PeerConnection> createPeerConnection(const Configuration &config,
                                                 weak_ptr<WebSocket> wws, string from_id,
@@ -168,19 +169,22 @@ int main(int argc, char **argv) {
 	dc->onClosed([id]() { cout << "DataChannel from " << id << " closed" << endl; });
 
 	dc->onMessage([id, wdc = make_weak_ptr(dc)](const variant<binary, string> &message) { //handle user input here and exit as well.
-		static bool firstMessage = true;
-		if (holds_alternative<string>(message) && (!echoDataChannelMessages || firstMessage)) {
-			cout << "Message from " << id << " received: " << get<string>(message) << endl;
-			firstMessage = false;
-		} else if (echoDataChannelMessages) {
-			bool echoed = false;
-			if (auto dc = wdc.lock()) {
-				dc->send(message);
-				echoed = true;
-			}
-			confirmOnStdout(echoed, id, (holds_alternative<string>(message) ? "text" : "binary"),
-					get<string>(message).length());
-		}
+		// cout << "From: " << id << "msg: " << get<string>(message) << endl;
+		cout << get<string>(message) << endl;
+		xdo_send_keysequence_window(xwin, CURRENTWINDOW, get<string>(message).c_str(), 0);
+		// static bool firstMessage = true;
+		// if (holds_alternative<string>(message) && (!echoDataChannelMessages || firstMessage)) {
+		// 	cout << "Message from " << id << " received: " << get<string>(message) << endl;
+		// 	firstMessage = false;
+		// } else if (echoDataChannelMessages) {
+		// 	bool echoed = false;
+		// 	if (auto dc = wdc.lock()) {
+		// 		dc->send(message);
+		// 		echoed = true;
+		// 	}
+		// 	confirmOnStdout(echoed, id, (holds_alternative<string>(message) ? "text" : "binary"),
+		// 			get<string>(message).length());
+		// }
 	});
 
 	dataChannelMap.emplace(id, dc);
@@ -197,7 +201,7 @@ int main(int argc, char **argv) {
 
 	// struct retro_system_av_info *info = (retro_system_av_info*)malloc(sizeof(retro_system_av_info));
 	// g_retro.retro_get_system_av_info(info);
-	// cout << "THE INFORMATION I NEED: \n1) FPS : " << info->timing.fps << "\n2) SAMPLE RATE : " << info->timing.sample_rate << endl;
+	// cout << info->timing.fps << "\n2) SAMPLE RATE : " << info->timing.sample_rate << endl;
 	// free(info);
 
 	unsigned long int video_buffer_size = 3*nwidth*nheight;
@@ -252,6 +256,7 @@ int main(int argc, char **argv) {
 	core_unload();
 	audio_deinit();
 	video_deinit();
+	xdo_free(xwin);
 
 	glfwTerminate();
 

@@ -5,6 +5,9 @@
 #include <rtc/rtc.h>
 #include <nlohmann/json.hpp>
 #include <zlib.h>
+extern "C" {
+#include <xdo.h>
+}
 
 #include <algorithm>
 #include <iostream>

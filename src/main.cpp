@@ -169,9 +169,9 @@ int main(int argc, char **argv) {
 	dc->onClosed([id]() { cout << "DataChannel from " << id << " closed" << endl; });
 
 	dc->onMessage([id, wdc = make_weak_ptr(dc)](const variant<binary, string> &message) { //handle user input here and exit as well.
-		// cout << "From: " << id << "msg: " << get<string>(message) << endl;
-		cout << get<string>(message) << endl;
-		xdo_send_keysequence_window(xwin, CURRENTWINDOW, get<string>(message).c_str(), 0);
+		string msg = get<string>(message);
+		cout << "\n Message is: " << msg << endl;
+		xdo_send_keysequence_window(xwin, CURRENTWINDOW, msg.c_str(), 0);
 		// static bool firstMessage = true;
 		// if (holds_alternative<string>(message) && (!echoDataChannelMessages || firstMessage)) {
 		// 	cout << "Message from " << id << " received: " << get<string>(message) << endl;

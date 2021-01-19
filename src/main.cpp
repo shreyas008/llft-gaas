@@ -172,25 +172,11 @@ int main(int argc, char **argv) {
 		string msg = get<string>(message);
 		cout << "\n Message is: " << msg << endl;
 		xdo_send_keysequence_window(xwin, CURRENTWINDOW, msg.c_str(), 0);
-		// static bool firstMessage = true;
-		// if (holds_alternative<string>(message) && (!echoDataChannelMessages || firstMessage)) {
-		// 	cout << "Message from " << id << " received: " << get<string>(message) << endl;
-		// 	firstMessage = false;
-		// } else if (echoDataChannelMessages) {
-		// 	bool echoed = false;
-		// 	if (auto dc = wdc.lock()) {
-		// 		dc->send(message);
-		// 		echoed = true;
-		// 	}
-		// 	confirmOnStdout(echoed, id, (holds_alternative<string>(message) ? "text" : "binary"),
-		// 			get<string>(message).length());
-		// }
 	});
 
 	dataChannelMap.emplace(id, dc);
 
 	while(!channelIsOpen) {}; //busy wait for channel to open.
-
 
 	// Starting up nanoarch
 	if (!glfwInit())
@@ -206,7 +192,7 @@ int main(int argc, char **argv) {
 
 	unsigned long int video_buffer_size = 3*nwidth*nheight;
 	unsigned long int compressed_size = video_buffer_size;
-	unsigned long int uncompressed_size = video_buffer_size;
+	// unsigned long int uncompressed_size = video_buffer_size;
 
 	if (auto dc = weak_dc.lock()) //transmit resolution
 	{
@@ -214,35 +200,25 @@ int main(int argc, char **argv) {
 		dc->send(j.dump());
 	}
 
-	binary video_data(video_buffer_size);
-
 	GLubyte *data = (GLubyte*)malloc((video_buffer_size)*sizeof(GLubyte));
 	GLubyte *compressed_data = (GLubyte*)malloc((video_buffer_size)*sizeof(GLubyte));
-	GLubyte *uncompressed_data = (GLubyte*)malloc((video_buffer_size)*sizeof(GLubyte));
+	// GLubyte *uncompressed_data = (GLubyte*)malloc((video_buffer_size)*sizeof(GLubyte));
 
 	int i = 0;
 	int r;
 	while (!glfwWindowShouldClose(g_win)) {
 		glfwPollEvents();
-
 		g_retro.retro_run();
-
 		glClear(GL_COLOR_BUFFER_BIT);
-
 		video_render();
 
 		if (i%10 == 0) {
 			glReadPixels(0, 0, nwidth, nheight, GL_BGR, GL_UNSIGNED_BYTE, data);
 
 			r = compress2(compressed_data, &compressed_size, data, video_buffer_size, 1);
-			if (r == Z_BUF_ERROR) cout << "buffer not big enough\n";
-			video_data.resize(compressed_size);
+			if (r == Z_BUF_ERROR) cout << "Buffer not big enough\n";
 
-			// Load video into binary
-			for (int i = 0; i< compressed_size; i++)
-				video_data[i] = (byte)compressed_data[i];
-			if (auto dc = weak_dc.lock()) dc->send(video_data);
-			// rtcSendMessage(1, msg,-1);
+			if (auto dc = weak_dc.lock()) dc->send((byte*)compressed_data, compressed_size);
 			i=0;
 			compressed_size = video_buffer_size;
 		}
@@ -259,7 +235,6 @@ int main(int argc, char **argv) {
 	xdo_free(xwin);
 
 	glfwTerminate();
-
 
 	cout << "Cleaning up..." << endl;
 
@@ -314,22 +289,9 @@ shared_ptr<PeerConnection> createPeerConnection(const Configuration &config,
 		dc->onClosed([from_id]() { cout << "DataChannel from " << from_id << " closed" << endl; });
 
 		dc->onMessage([from_id, wdc = make_weak_ptr(dc)](const variant<binary, string> &message) {
-			static bool firstMessage = true;
-			if (holds_alternative<string>(message) && (!echoDataChannelMessages || firstMessage)) {
+			if (holds_alternative<string>(message))
 				cout << "Message from " << from_id << " received: " << get<string>(message) << endl;
-				firstMessage = false;
-			} else if (echoDataChannelMessages) {
-				bool echoed = false;
-				if (auto dc = wdc.lock()) {
-					dc->send(message);
-					echoed = true;
-				}
-				confirmOnStdout(echoed, from_id, (holds_alternative<string>(message) ? "text" : "binary"),
-						get<string>(message).length());
-			}
 		});
-
-		dc->send("Hello from " + localId);
 
 		dataChannelMap.emplace(from_id, dc);
 	});
@@ -337,19 +299,6 @@ shared_ptr<PeerConnection> createPeerConnection(const Configuration &config,
 	peerConnectionMap.emplace(to_id, pc);
 	return pc;
 };
-
-void confirmOnStdout(bool echoed, string id, string type, size_t length) {
-	static long count = 0;
-	static long freq = 100;
-	if (!(++count%freq)) {
-		cout << "Received " << count << " pings in total from host " << id << ", most recent of type "
-		     << type << " and " << (echoed ? "" : "un") << "successfully echoed most recent ping of size "
-		     << length << " back to " << id << endl;
-		if (count >= (freq * 10) && freq < 1000000) {
-			freq *= 10;
-		}
-	}
-}
 
 // Helper function to generate a random ID
 string randomId(size_t length) {

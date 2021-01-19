@@ -2,7 +2,6 @@
 #define __NANOARCH_H_
 
 #include <rtc/rtc.hpp>
-#include <rtc/rtc.h>
 #include <nlohmann/json.hpp>
 #include <zlib.h>
 extern "C" {
@@ -42,7 +41,6 @@ struct GameRetro {
 extern struct GameRetro g_retro;
 extern int nheight;
 extern int nwidth;
-extern const int16_t* sound_data;
 extern GLFWwindow *g_win;
 
 // Variable from main

@@ -185,14 +185,11 @@ int main(int argc, char **argv) {
 	core_load(params->coreName());
 	core_load_game(params->gameName());
 
-	// struct retro_system_av_info *info = (retro_system_av_info*)malloc(sizeof(retro_system_av_info));
-	// g_retro.retro_get_system_av_info(info);
-	// cout << info->timing.fps << "\n2) SAMPLE RATE : " << info->timing.sample_rate << endl;
-	// free(info);
+	nwidth = nwidth/3; nheight = nheight/3;  //resizing to reduce amount of data sent
+	glfwSetWindowSize(g_win, nwidth, nheight);
 
 	unsigned long int video_buffer_size = 3*nwidth*nheight;
 	unsigned long int compressed_size = video_buffer_size;
-	// unsigned long int uncompressed_size = video_buffer_size;
 
 	if (auto dc = weak_dc.lock()) //transmit resolution
 	{
@@ -202,7 +199,6 @@ int main(int argc, char **argv) {
 
 	GLubyte *data = (GLubyte*)malloc((video_buffer_size)*sizeof(GLubyte));
 	GLubyte *compressed_data = (GLubyte*)malloc((video_buffer_size)*sizeof(GLubyte));
-	// GLubyte *uncompressed_data = (GLubyte*)malloc((video_buffer_size)*sizeof(GLubyte));
 
 	int i = 0;
 	int r;
@@ -212,7 +208,7 @@ int main(int argc, char **argv) {
 		glClear(GL_COLOR_BUFFER_BIT);
 		video_render();
 
-		if (i%10 == 0) {
+		if (i%6 == 0) {
 			glReadPixels(0, 0, nwidth, nheight, GL_BGR, GL_UNSIGNED_BYTE, data);
 
 			r = compress2(compressed_data, &compressed_size, data, video_buffer_size, 1);
@@ -223,7 +219,6 @@ int main(int argc, char **argv) {
 			compressed_size = video_buffer_size;
 		}
 		i++;
-
 		glfwSwapBuffers(g_win);
 	}
 

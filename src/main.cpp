@@ -38,12 +38,14 @@ weak_ptr<DataChannel> weak_dc;
 string localId;
 bool echoDataChannelMessages = false;
 xdo_t* xwin = xdo_new(NULL); // handle to window
+Window nano_win = 0;
 
 shared_ptr<PeerConnection> createPeerConnection(const Configuration &config,
                                                 weak_ptr<WebSocket> wws, string from_id,
 												string to_id, string localId);
 void confirmOnStdout(bool echoed, string id, string type, size_t length);
 string randomId(size_t length);
+Window get_window();
 
 int main(int argc, char **argv) {
 	Cmdline *params = nullptr;
@@ -169,9 +171,11 @@ int main(int argc, char **argv) {
 	dc->onClosed([id]() { cout << "DataChannel from " << id << " closed" << endl; });
 
 	dc->onMessage([id, wdc = make_weak_ptr(dc)](const variant<binary, string> &message) { //handle user input here and exit as well.
+		if (nano_win == 0)  nano_win = get_window();
+
 		string msg = get<string>(message);
-		cout << "\n Message is: " << msg << endl;
-		xdo_send_keysequence_window(xwin, CURRENTWINDOW, msg.c_str(), 0);
+		cout << "Message is: " << msg << endl;
+		xdo_send_keysequence_window(xwin, nano_win, msg.c_str(), 0);
 	});
 
 	dataChannelMap.emplace(id, dc);
@@ -219,7 +223,7 @@ int main(int argc, char **argv) {
 			compressed_size = video_buffer_size;
 		}
 		i++;
-		glfwSwapBuffers(g_win);
+		// glfwSwapBuffers(g_win);
 	}
 
 	free(data);
@@ -294,6 +298,22 @@ shared_ptr<PeerConnection> createPeerConnection(const Configuration &config,
 	peerConnectionMap.emplace(to_id, pc);
 	return pc;
 };
+
+Window get_window()
+{
+	xdo_search_t search; // Window search paramater
+	Window* list;
+	unsigned int nwindows;
+
+	memset(&search, 0, sizeof(xdo_search_t));
+	search.max_depth = -1;
+	search.require = xdo_search::SEARCH_ANY;
+	search.searchmask |= SEARCH_NAME;
+	search.winname = "nanoarch";
+
+	xdo_search_windows(xwin, &search, &list, &nwindows);
+	return list[0];
+}
 
 // Helper function to generate a random ID
 string randomId(size_t length) {

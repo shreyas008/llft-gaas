@@ -31,19 +31,16 @@ using json = nlohmann::json;
 
 template <class T> weak_ptr<T> make_weak_ptr(shared_ptr<T> ptr) { return ptr; }
 
-unordered_map<string, shared_ptr<PeerConnection>> peerConnectionMap;
-unordered_map<string, shared_ptr<DataChannel>> dataChannelMap;
+unordered_map<string, shared_ptr<Client>> clients{};
 weak_ptr<DataChannel> weak_dc;
 
 string localId;
-bool echoDataChannelMessages = false;
 xdo_t* xwin = xdo_new(NULL); // handle to window
 Window nano_win = 0;
 
-shared_ptr<PeerConnection> createPeerConnection(const Configuration &config,
+shared_ptr<Client> createPeerConnection(const Configuration &config,
                                                 weak_ptr<WebSocket> wws, string from_id,
 												string to_id, string localId);
-void confirmOnStdout(bool echoed, string id, string type, size_t length);
 string randomId(size_t length);
 Window get_window();
 
@@ -78,10 +75,6 @@ int main(int argc, char **argv) {
 	string localId = randomId(6);
 	cout << "The local ID is: " << localId << endl;
 
-	echoDataChannelMessages = params->echoDataChannelMessages();
-	cout << "Received data channel messages will be "
-	     << (echoDataChannelMessages ? "echoed back to sender" : "printed to stdout") << endl;
-
 	auto ws = make_shared<WebSocket>(WebSocket::Configuration{.disableTlsVerification = true});
 
 	ws->onOpen([ws, localId]() {
@@ -115,23 +108,27 @@ int main(int argc, char **argv) {
 			return;
 		string type = it->get<string>();
 
+		shared_ptr<Client> c;
 		shared_ptr<PeerConnection> pc;
-		if (auto jt = peerConnectionMap.find(id); jt != peerConnectionMap.end()) {
+		if (auto jt = clients.find(id); jt != clients.end()) {
 			cout << "\nFound PeerConnection in map \n";
-			pc = jt->second;
+			pc = clients.at(id)->peerConnection;
 		} else if (type == "offer") {
 			cout << "Answering to " + id << endl;
-			pc = createPeerConnection(config, ws, id, localId, localId);
+			c = createPeerConnection(config, ws, id, localId, localId);
+			clients.emplace(id, c);
 		} else {
 			return;
 		}
 
 		if (type == "offer" || type == "answer") {
 			auto sdp = message["data"]["description"]["sdp"].get<string>();
+			pc = clients.at(id)->peerConnection;
 			pc->setRemoteDescription(Description(sdp, type));
 		} else if (type == "candidate") {
 			auto sdp = message["data"]["candidate"]["candidate"].get<string>();
 			auto mid = message["data"]["candidate"]["sdpMid"].get<string>();
+			pc = clients.at(id)->peerConnection;
 			pc->addRemoteCandidate(Candidate(sdp, mid));
 		}
 	});
@@ -154,12 +151,8 @@ int main(int argc, char **argv) {
 
 	string id = params->getClientId();
 	cout << "Offering to " + id << endl;
-	auto pc = createPeerConnection(config, ws, localId, id, localId);
-
-	// We are the offerer, so create a data channel to initiate the process
-	const string label = "gameChannel";
-	cout << "Creating DataChannel with label \"" << label << "\"" << endl;
-	auto dc = pc->createDataChannel(label);
+	auto c = createPeerConnection(config, ws, localId, id, localId);
+	auto dc = c->dataChannel;
 
 	weak_dc = make_weak_ptr(dc);
 	bool channelIsOpen = false;
@@ -177,8 +170,6 @@ int main(int argc, char **argv) {
 		cout << "Message is: " << msg << endl;
 		xdo_send_keysequence_window(xwin, nano_win, msg.c_str(), 0);
 	});
-
-	dataChannelMap.emplace(id, dc);
 
 	while(!channelIsOpen) {}; //busy wait for channel to open.
 
@@ -237,17 +228,17 @@ int main(int argc, char **argv) {
 
 	cout << "Cleaning up..." << endl;
 
-	dataChannelMap.clear();
-	peerConnectionMap.clear();
+	clients.clear();
 	delete params;
 	return 0;
 }
 
 // Create and setup a PeerConnection
-shared_ptr<PeerConnection> createPeerConnection(const Configuration &config,
+shared_ptr<Client> createPeerConnection(const Configuration &config,
                                                 weak_ptr<WebSocket> wws, string from_id,
 												string to_id, string localId) {
 	auto pc = make_shared<PeerConnection>(config);
+	shared_ptr<Client> client(new Client(pc));
 
 	pc->onStateChange([](PeerConnection::State state) { cout << "State: " << state << endl; });
 
@@ -281,22 +272,14 @@ shared_ptr<PeerConnection> createPeerConnection(const Configuration &config,
 			ws->send(message.dump());
 	});
 
-	pc->onDataChannel([from_id, to_id, localId](shared_ptr<DataChannel> dc) {
-		cout << "DataChannel from " << from_id << " received with label \"" << dc->label() << "\""
-		     << endl;
+	// We are the offerer, so create a data channel to initiate the process
+	const string label = "gameChannel";
+	cout << "Creating DataChannel with label \"" << label << "\"" << endl;
+	auto dc = pc->createDataChannel(label);
+	client->dataChannel = dc;
 
-		dc->onClosed([from_id]() { cout << "DataChannel from " << from_id << " closed" << endl; });
-
-		dc->onMessage([from_id, wdc = make_weak_ptr(dc)](const variant<binary, string> &message) {
-			if (holds_alternative<string>(message))
-				cout << "Message from " << from_id << " received: " << get<string>(message) << endl;
-		});
-
-		dataChannelMap.emplace(from_id, dc);
-	});
-
-	peerConnectionMap.emplace(to_id, pc);
-	return pc;
+	clients.emplace(to_id, client);
+	return client;
 };
 
 Window get_window()

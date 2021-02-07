@@ -21,6 +21,30 @@ extern "C" {
 #include <GLFW/glfw3.h>
 #include <alsa/asoundlib.h>
 
+struct Client {
+    enum class State {
+        Waiting,
+        WaitingForVideo,
+        WaitingForAudio,
+        Ready
+    };
+    const std::shared_ptr<rtc::PeerConnection> & peerConnection = _peerConnection;
+    Client(std::shared_ptr<rtc::PeerConnection> pc) {
+        _peerConnection = pc;
+    }
+    // std::optional<std::shared_ptr<ClientTrackData>> video;
+    // std::optional<std::shared_ptr<ClientTrackData>> audio;
+    std::shared_ptr<rtc::DataChannel> dataChannel{};
+    void setState(State state);
+    State getState();
+
+private:
+    std::shared_mutex _mutex;
+    State state = State::Waiting;
+    std::string id;
+    std::shared_ptr<rtc::PeerConnection> _peerConnection;
+};
+
 struct GameRetro {
 	void *handle;
 	bool initialized;

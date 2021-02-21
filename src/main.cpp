@@ -25,7 +25,6 @@
 
 using namespace rtc;
 using namespace std;
-using namespace std::chrono_literals;
 
 using json = nlohmann::json;
 
@@ -41,8 +40,6 @@ Window nano_win = 0;
 shared_ptr<Client> createPeerConnection(const Configuration &config,
                                                 weak_ptr<WebSocket> wws, string from_id,
 												string to_id, string localId);
-string randomId(size_t length);
-Window get_window();
 
 int main(int argc, char **argv) {
 	Cmdline *params = nullptr;
@@ -164,7 +161,7 @@ int main(int argc, char **argv) {
 	dc->onClosed([id]() { cout << "DataChannel from " << id << " closed" << endl; });
 
 	dc->onMessage([id, wdc = make_weak_ptr(dc)](const variant<binary, string> &message) { //handle user input here and exit as well.
-		if (nano_win == 0)  nano_win = get_window();
+		if (nano_win == 0)  nano_win = get_window(xwin);
 
 		string msg = get<string>(message);
 		cout << "Message is: " << msg << endl;
@@ -172,6 +169,13 @@ int main(int argc, char **argv) {
 	});
 
 	while(!channelIsOpen) {}; //busy wait for channel to open.
+
+	// Start collab-render as a separate process
+	if (fork() == 0)
+	{
+		char* args[] = { "../bin/collab-render",(char*)params->coreName(), (char*)params->gameName(), NULL};
+		int err = execvp(args[0], args);
+	}
 
 	// Starting up nanoarch
 	if (!glfwInit())
@@ -214,7 +218,7 @@ int main(int argc, char **argv) {
 			compressed_size = video_buffer_size;
 		}
 		i++;
-		// glfwSwapBuffers(g_win);
+		glfwSwapBuffers(g_win);
 	}
 
 	free(data);
@@ -281,31 +285,3 @@ shared_ptr<Client> createPeerConnection(const Configuration &config,
 	clients.emplace(to_id, client);
 	return client;
 };
-
-Window get_window()
-{
-	xdo_search_t search; // Window search paramater
-	Window* list;
-	unsigned int nwindows;
-
-	memset(&search, 0, sizeof(xdo_search_t));
-	search.max_depth = -1;
-	search.require = xdo_search::SEARCH_ANY;
-	search.searchmask |= SEARCH_NAME;
-	search.winname = "nanoarch";
-
-	xdo_search_windows(xwin, &search, &list, &nwindows);
-	return list[0];
-}
-
-// Helper function to generate a random ID
-string randomId(size_t length) {
-	// static const string characters(
-	//     "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz");
-	static const string characters("0123456789");
-	string id(length, '0');
-	default_random_engine rng(random_device{}());
-	uniform_int_distribution<int> dist(0, int(characters.size() - 1));
-	generate(id.begin(), id.end(), [&]() { return characters.at(dist(rng)); });
-	return id;
-}

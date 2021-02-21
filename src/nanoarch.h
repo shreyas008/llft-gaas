@@ -15,6 +15,7 @@ extern "C" {
 #include <thread>
 #include <unordered_map>
 #include "parse_cl.h"
+#include "utils.hpp"
 
 #include "libretro.h"
 #include <GL/glew.h>

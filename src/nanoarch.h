@@ -13,6 +13,7 @@ extern "C" {
 #include <memory>
 #include <random>
 #include <thread>
+#include <semaphore.h>
 #include <unordered_map>
 #include "parse_cl.h"
 #include "utils.hpp"

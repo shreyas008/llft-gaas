@@ -7,7 +7,7 @@ add_executable(game-server
 set_target_properties(game-server PROPERTIES
 	CXX_STANDARD 17
 	OUTPUT_NAME game-server)
-target_link_libraries(game-server datachannel dl z glfw GLEW GL asound xdo rt)
+target_link_libraries(game-server datachannel dl z glfw GLEW GL asound xdo rt pthread)
 
 add_executable(collab-render
   collab_render.cpp utils.cpp
@@ -16,4 +16,4 @@ set_target_properties(collab-render PROPERTIES
 	CXX_STANDARD 17
 	OUTPUT_NAME collab-render)
 target_link_directories(collab-render PUBLIC lib)
-target_link_libraries(collab-render collab dl glfw GLEW GL xdo rt)
+target_link_libraries(collab-render collab dl glfw GLEW GL xdo rt pthread)

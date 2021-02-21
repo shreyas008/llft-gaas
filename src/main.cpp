@@ -170,9 +170,14 @@ int main(int argc, char **argv) {
 
 	while(!channelIsOpen) {}; //busy wait for channel to open.
 
-	vector<char*> mem_names; //initialize with the three memories
-	int* test = (int*)create_shared_memory("test_run", sizeof(int));
-	*test = 0;
+	//Initialize shared memory constructs to
+	vector<char*> mem_names {"frame-sync", "pixel-data", "input-str"};
+	// Semaphore to synchronize execution
+	sem_t* frame_sync = (sem_t*)create_shared_memory(mem_names[0], sizeof(sem_t));
+	sem_init(frame_sync, 1, 0);
+	// Pixel data for collaborative rendering
+	GLubyte* pixel_data = (GLubyte*)create_shared_memory(mem_names[1], (1036800)*sizeof(GLubyte*));
+
 	// Start collab-render as a separate process
 	if (fork() == 0)
 	{
@@ -214,6 +219,9 @@ int main(int argc, char **argv) {
 		if (i%6 == 0) {
 			glReadPixels(0, 0, nwidth, nheight, GL_BGR, GL_UNSIGNED_BYTE, data);
 
+			cout << "Main pixel 0: " << int(data[0]) << endl;
+			cout << "Collab pixel 0: " << int(pixel_data[0]) << endl;
+
 			r = compress2(compressed_data, &compressed_size, data, video_buffer_size, 1);
 			if (r == Z_BUF_ERROR) cout << "Buffer not big enough\n";
 
@@ -223,7 +231,7 @@ int main(int argc, char **argv) {
 		}
 		i++;
 		glfwSwapBuffers(g_win);
-		cout << "Test val: " << test[0] << endl;
+		sem_post(frame_sync);
 	}
 
 	free(data);
@@ -233,6 +241,7 @@ int main(int argc, char **argv) {
 	audio_deinit();
 	video_deinit();
 	xdo_free(xwin);
+	sem_destroy(frame_sync);
 
 	glfwTerminate();
 

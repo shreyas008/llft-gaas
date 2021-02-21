@@ -29,3 +29,21 @@ string randomId(size_t length) {
 	generate(id.begin(), id.end(), [&]() { return characters.at(dist(rng)); });
 	return id;
 }
+
+void* create_shared_memory(char* mem_name, int size)
+{
+	int memFd = shm_open(mem_name, O_CREAT | O_RDWR, S_IRWXU);
+	int res = ftruncate(memFd, size);
+	void *buffer = mmap(NULL, size, PROT_READ | PROT_WRITE, MAP_SHARED, memFd, 0);
+	return buffer;
+}
+
+void* open_shared_memory(char* mem_name, int size) {
+	int memFd = shm_open(mem_name, O_RDWR, 0);
+	void *buffer = mmap(NULL, size, PROT_READ | PROT_WRITE, MAP_SHARED, memFd, 0);
+	return buffer;
+}
+
+void destroy_shared_memory(vector<char*> mem_names) {
+    return;
+}

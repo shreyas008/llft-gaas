@@ -170,10 +170,14 @@ int main(int argc, char **argv) {
 
 	while(!channelIsOpen) {}; //busy wait for channel to open.
 
+	vector<char*> mem_names; //initialize with the three memories
+	int* test = (int*)create_shared_memory("test_run", sizeof(int));
+	*test = 0;
 	// Start collab-render as a separate process
 	if (fork() == 0)
 	{
-		char* args[] = { "../bin/collab-render",(char*)params->coreName(), (char*)params->gameName(), NULL};
+		char exec_loc[] = "../bin/collab-render";
+		char* args[] = {exec_loc, (char*)params->coreName(), (char*)params->gameName(), NULL};
 		int err = execvp(args[0], args);
 	}
 
@@ -219,10 +223,12 @@ int main(int argc, char **argv) {
 		}
 		i++;
 		glfwSwapBuffers(g_win);
+		cout << "Test val: " << test[0] << endl;
 	}
 
 	free(data);
 	free(compressed_data);
+	destroy_shared_memory(mem_names);
 	core_unload();
 	audio_deinit();
 	video_deinit();

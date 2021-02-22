@@ -11,8 +11,16 @@ int main(int argc, char **argv) {
 
     sem_t *frame_sync = (sem_t*)open_shared_memory(mem_names[0], sizeof(sem_t));
 	GLubyte* pixel_data = (GLubyte*)create_shared_memory(mem_names[1], (1036800)*sizeof(GLubyte*));
-    int counter;
+    int i;
 
-    while (sem_wait(frame_sync) == 0) counter = run_frame(counter, pixel_data);
+    struct win_dimensions win_d = get_window_dimensions();
+    while (sem_wait(frame_sync) == 0) {
+        run_frame();
+        if(i%6 == 0) {
+            glReadPixels(0, 0, win_d.nwidth, win_d.nheight, GL_BGR, GL_UNSIGNED_BYTE, pixel_data);
+            i=0;
+        }
+        i++;
+    }
     return 0;
 }

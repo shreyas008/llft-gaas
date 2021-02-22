@@ -5,7 +5,12 @@
 #include <GLFW/glfw3.h>
 
 void start_game ( const char* core_name, const char* game_name );
-int run_frame (int counter, GLubyte* pixel_data);
+void run_frame ();
 void send_input ( char* msg);
+struct win_dimensions get_window_dimensions();
 
+struct win_dimensions {
+	int nwidth;
+	int nheight;
+};
 #endif // __NANOARCH_COLLAB_HPP_

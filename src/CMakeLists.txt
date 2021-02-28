@@ -1,5 +1,6 @@
 cmake_minimum_required(VERSION 3.7)
 project(llft-gaas LANGUAGES CXX)
+find_package(ImageMagick COMPONENTS Magick++)
 
 add_executable(game-server
   nanoarch.h parse_cl.h utils.hpp
@@ -15,5 +16,8 @@ add_executable(collab-render
 set_target_properties(collab-render PROPERTIES
 	CXX_STANDARD 17
 	OUTPUT_NAME collab-render)
+add_definitions( -DMAGICKCORE_QUANTUM_DEPTH=8 )
+add_definitions( -DMAGICKCORE_HDRI_ENABLE=0 )
+target_include_directories(collab-render PUBLIC ${ImageMagick_INCLUDE_DIRS})
 target_link_directories(collab-render PUBLIC lib)
-target_link_libraries(collab-render collab dl glfw GLEW GL xdo rt pthread)
+target_link_libraries(collab-render collab dl glfw GLEW GL xdo rt pthread ${ImageMagick_LIBRARIES})

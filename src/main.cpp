@@ -22,6 +22,7 @@
  */
 
 #include "nanoarch.h"
+#include <signal.h>
 
 using namespace rtc;
 using namespace std;
@@ -177,9 +178,10 @@ int main(int argc, char **argv) {
 	sem_init(frame_sync, 1, 0);
 	// Pixel data for collaborative rendering
 	GLubyte* pixel_data = (GLubyte*)create_shared_memory(mem_names[1], (1036800)*sizeof(GLubyte*));
+	int pid;
 
 	// Start collab-render as a separate process
-	if (fork() == 0)
+	if ((pid = fork()) == 0)
 	{
 		char exec_loc[] = "../bin/collab-render";
 		char* args[] = {exec_loc, (char*)params->coreName(), (char*)params->gameName(), NULL};
@@ -219,8 +221,7 @@ int main(int argc, char **argv) {
 		if (i%6 == 0) {
 			glReadPixels(0, 0, nwidth, nheight, GL_BGR, GL_UNSIGNED_BYTE, data);
 
-			cout << "Main pixel 0: " << int(data[0]) << endl;
-			cout << "Collab pixel 0: " << int(pixel_data[0]) << endl;
+			data = get_delta(data, pixel_data, video_buffer_size);
 
 			r = compress2(compressed_data, &compressed_size, data, video_buffer_size, 1);
 			if (r == Z_BUF_ERROR) cout << "Buffer not big enough\n";
@@ -234,6 +235,7 @@ int main(int argc, char **argv) {
 		sem_post(frame_sync);
 	}
 
+	kill(pid, SIGKILL);
 	free(data);
 	free(compressed_data);
 	destroy_shared_memory(mem_names);
@@ -242,7 +244,6 @@ int main(int argc, char **argv) {
 	video_deinit();
 	xdo_free(xwin);
 	sem_destroy(frame_sync);
-
 	glfwTerminate();
 
 	cout << "Cleaning up..." << endl;
@@ -250,6 +251,12 @@ int main(int argc, char **argv) {
 	clients.clear();
 	delete params;
 	return 0;
+}
+
+// Perform delta encoding of the two images as proposed by Kahawai.
+GLubyte* get_delta(GLubyte* high_res, GLubyte* low_res, unsigned long int video_buffer_size) {
+	for (int i=0; i<video_buffer_size; i++) high_res[i]= (high_res[i]-low_res[i])/2 + 127;
+	return high_res;
 }
 
 // Create and setup a PeerConnection

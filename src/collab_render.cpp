@@ -2,8 +2,10 @@
 #include <semaphore.h>
 #include "collab.hpp"
 #include "utils.hpp"
+#include <Magick++.h>
 
 using namespace std;
+using namespace Magick;
 
 int main(int argc, char **argv) {
     start_game(argv[1], argv[2]);
@@ -14,10 +16,17 @@ int main(int argc, char **argv) {
     int i;
 
     struct win_dimensions win_d = get_window_dimensions();
+    Image im;
+    Geometry g(win_d.nwidth*2, win_d.nheight*2);
+
     while (sem_wait(frame_sync) == 0) {
         run_frame();
         if(i%6 == 0) {
             glReadPixels(0, 0, win_d.nwidth, win_d.nheight, GL_BGR, GL_UNSIGNED_BYTE, pixel_data);
+
+            im.read(win_d.nwidth, win_d.nheight, "BGR", CharPixel, pixel_data);
+            im.scale(g);
+            im.write(0, 0, win_d.nwidth*2, win_d.nheight*2, "BGR", CharPixel, pixel_data);
             i=0;
         }
         i++;

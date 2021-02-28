@@ -80,4 +80,7 @@ void audio_deinit();
 void video_deinit();
 void core_unload();
 
+// Delta Encoding
+GLubyte* get_delta(GLubyte* high_res, GLubyte* low_res, unsigned long int video_buffer_size);
+
 #endif // __NANOARCH_H_

@@ -2,6 +2,7 @@
 .idea
 *.log
 tmp/
+GAME_USERS.db
 
 
 bin/

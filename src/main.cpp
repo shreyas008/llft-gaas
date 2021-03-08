@@ -21,8 +21,8 @@
  * along with this program; If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include "nanoarch.h"
 #include <signal.h>
+#include "nanoarch.h"
 
 using namespace rtc;
 using namespace std;
@@ -161,14 +161,6 @@ int main(int argc, char **argv) {
 
 	dc->onClosed([id]() { cout << "DataChannel from " << id << " closed" << endl; });
 
-	dc->onMessage([id, wdc = make_weak_ptr(dc)](const variant<binary, string> &message) { //handle user input here and exit as well.
-		if (nano_win == 0)  nano_win = get_window(xwin);
-
-		string msg = get<string>(message);
-		cout << "Message is: " << msg << endl;
-		xdo_send_keysequence_window(xwin, nano_win, msg.c_str(), 0);
-	});
-
 	while(!channelIsOpen) {}; //busy wait for channel to open.
 
 	//Initialize shared memory constructs to
@@ -178,6 +170,19 @@ int main(int argc, char **argv) {
 	sem_init(frame_sync, 1, 0);
 	// Pixel data for collaborative rendering
 	GLubyte* pixel_data = (GLubyte*)create_shared_memory(mem_names[1], (1036800)*sizeof(GLubyte*));
+	char* input_str = (char*)create_shared_memory(mem_names[2], sizeof(char*));
+
+	dc->onMessage([id, wdc = make_weak_ptr(dc), input_str](const variant<binary, string> &message) {
+	//handle user input here and exit as well.
+		if (nano_win == 0)  nano_win = get_window(xwin, "nanoarch_main");
+
+		string msg = get<string>(message);
+		// cout << "Message is: " << msg << endl;
+		glfwFocusWindow(g_win);
+		xdo_send_keysequence_window(xwin, nano_win, msg.c_str(), 0);
+		glfwPollEvents();
+		input_str[0] = msg[0];
+	});
 	int pid;
 
 	// Start collab-render as a separate process
@@ -221,7 +226,7 @@ int main(int argc, char **argv) {
 		if (i%6 == 0) {
 			glReadPixels(0, 0, nwidth, nheight, GL_BGR, GL_UNSIGNED_BYTE, data);
 
-			data = get_delta(data, pixel_data, video_buffer_size);
+			// data = get_delta(data, pixel_data, video_buffer_size);
 
 			r = compress2(compressed_data, &compressed_size, data, video_buffer_size, 1);
 			if (r == Z_BUF_ERROR) cout << "Buffer not big enough\n";

@@ -110,7 +110,7 @@ void create_window(int width, int height) {
 	glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 1);
 	glfwWindowHint(GLFW_RESIZABLE, GL_FALSE);
 
-	g_win = glfwCreateWindow(width, height, "nanoarch", NULL, NULL);
+	g_win = glfwCreateWindow(width, height, "nanoarch_main", NULL, NULL);
 
 	if (!g_win)
 		die("Failed to create window.");

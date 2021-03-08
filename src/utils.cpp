@@ -2,7 +2,7 @@
 
 using namespace std;
 
-Window get_window(xdo_t* xwin)
+Window get_window(xdo_t* xwin, const char* winname)
 {
 	xdo_search_t search; // Window search paramater
 	Window* list;
@@ -12,7 +12,7 @@ Window get_window(xdo_t* xwin)
 	search.max_depth = -1;
 	search.require = xdo_search::SEARCH_ANY;
 	search.searchmask |= SEARCH_NAME;
-	search.winname = "nanoarch";
+	search.winname = winname;
 
 	xdo_search_windows(xwin, &search, &list, &nwindows);
 	return list[0];

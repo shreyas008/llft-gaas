@@ -13,7 +13,7 @@ extern "C" {
 }
 
 std::string randomId(size_t length);
-Window get_window(xdo_t* xwin);
+Window get_window(xdo_t* xwin, const char* winname);
 void* create_shared_memory(char* mem_name, int size);
 void* open_shared_memory(char* mem_name, int size);
 void destroy_shared_memory(std::vector<char*>);
